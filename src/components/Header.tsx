@@ -1,5 +1,4 @@
 import React from 'react';
-import DiagnosticPanel from './DiagnosticPanel';
 import { Truck, Bell, User, Settings } from 'lucide-react';
 
 const Header = () => {
