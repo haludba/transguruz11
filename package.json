@@ -1,0 +1,18 @@
+{
+  "name": "dalnoboi-workspace",
+  "version": "1.0.0",
+  "description": "Workspace root for Dalnoboi trucking application",
+  "private": true,
+  "scripts": {
+    "dev": "cd dalnoboi/project && npm run dev",
+    "build": "cd dalnoboi/project && npm run build",
+    "preview": "cd dalnoboi/project && npm run preview",
+    "lint": "cd dalnoboi/project && npm run lint",
+    "install-deps": "cd dalnoboi/project && npm install"
+  },
+  "keywords": ["trucking", "logistics", "cargo", "freight"],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
