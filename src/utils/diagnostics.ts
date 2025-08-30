@@ -29,6 +29,12 @@ export class DiagnosticsService {
     // Проверка зависимостей
     results.push(...await this.checkDependencies());
     
+    // Проверка dev сервера
+    results.push(...await this.checkDevServerHealth());
+    
+    // Проверка специфичных проблем приложения
+    results.push(...await this.checkAppSpecificIssues());
+    
     // Проверка конфигурации
     results.push(...this.checkConfiguration());
     
@@ -43,6 +49,9 @@ export class DiagnosticsService {
     
     // Проверка JavaScript ошибок
     results.push(...this.checkJavaScriptErrors());
+    
+    // Проверка портов
+    results.push(...await this.checkPortAvailability());
 
     // Определение общего статуса
     const hasErrors = results.some(r => r.status === 'error');
@@ -61,7 +70,6 @@ export class DiagnosticsService {
     const results: DiagnosticResult[] = [];
     
     try {
-      // Для API берём текущий вид карты (это ок), радиусы всё равно считаются отдельно от userLocation
       const criticalModules = [
         'react',
         'react-dom', 
@@ -122,9 +130,27 @@ export class DiagnosticsService {
         case 'react-dom':
           return typeof ReactDOM !== 'undefined';
         case 'mapbox-gl':
-          // Проверяем наличие mapbox-gl
-          const mapboxgl = await import('mapbox-gl');
-          return !!mapboxgl.default;
+          try {
+            // Проверяем наличие mapbox-gl
+            const mapboxgl = await import('mapbox-gl');
+            return !!mapboxgl.default;
+          } catch {
+            return false;
+          }
+        case '@turf/turf':
+          try {
+            await import('@turf/turf');
+            return true;
+          } catch {
+            return false;
+          }
+        case 'lucide-react':
+          try {
+            await import('lucide-react');
+            return true;
+          } catch {
+            return false;
+          }
         default:
           return true; // Для остальных модулей предполагаем успех
       }
@@ -355,6 +381,113 @@ export class DiagnosticsService {
       }
     }, 1000);
 
+    return results;
+  }
+
+  // Новый метод: проверка состояния dev сервера
+  async checkDevServerHealth(): Promise<DiagnosticResult[]> {
+    const results: DiagnosticResult[] = [];
+    
+    try {
+      // Проверяем HMR (Hot Module Replacement)
+      if (import.meta.hot) {
+        results.push({
+          category: 'Dev Сервер',
+          status: 'success',
+          message: 'Hot Module Replacement активен',
+          details: 'Изменения в коде будут применяться автоматически'
+        });
+      } else {
+        results.push({
+          category: 'Dev Сервер',
+          status: 'warning',
+          message: 'HMR недоступен',
+          details: 'Возможно, приложение запущено в production режиме',
+          solution: 'Убедитесь, что используется npm run dev'
+        });
+      }
+      
+      // Проверяем доступность Vite dev сервера
+      const devServerCheck = await this.checkDevServerStatus();
+      results.push(devServerCheck);
+      
+    } catch (error) {
+      results.push({
+        category: 'Dev Сервер',
+        status: 'error',
+        message: 'Ошибка проверки dev сервера',
+        details: `${error}`,
+        solution: 'Перезапустите dev сервер: npm run dev'
+      });
+    }
+    
+    return results;
+  }
+
+  // Проверка специфичных для приложения проблем
+  async checkAppSpecificIssues(): Promise<DiagnosticResult[]> {
+    const results: DiagnosticResult[] = [];
+    
+    try {
+      // Проверка Mapbox GL JS инициализации
+      try {
+        const mapboxgl = await import('mapbox-gl');
+        if (mapboxgl.accessToken) {
+          results.push({
+            category: 'Mapbox',
+            status: 'success',
+            message: 'Mapbox токен установлен',
+            details: 'Карты будут работать корректно'
+          });
+        } else {
+          results.push({
+            category: 'Mapbox',
+            status: 'warning',
+            message: 'Mapbox токен не установлен',
+            details: 'Карты могут не отображаться',
+            solution: 'Проверьте настройку токена в mapboxService.ts'
+          });
+        }
+      } catch (error) {
+        results.push({
+          category: 'Mapbox',
+          status: 'error',
+          message: 'Ошибка загрузки Mapbox GL',
+          details: `${error}`,
+          solution: 'Переустановите mapbox-gl: npm install mapbox-gl@latest'
+        });
+      }
+      
+      // Проверка Turf.js (для геометрических расчетов)
+      try {
+        const turf = await import('@turf/turf');
+        if (turf.point && turf.distance) {
+          results.push({
+            category: 'Геометрия',
+            status: 'success',
+            message: 'Turf.js загружен корректно',
+            details: 'Геометрические расчеты будут работать'
+          });
+        }
+      } catch (error) {
+        results.push({
+          category: 'Геометрия',
+          status: 'error',
+          message: 'Ошибка загрузки Turf.js',
+          details: `${error}`,
+          solution: 'Переустановите @turf/turf: npm install @turf/turf@latest'
+        });
+      }
+      
+    } catch (error) {
+      results.push({
+        category: 'Приложение',
+        status: 'error',
+        message: 'Критическая ошибка при проверке компонентов приложения',
+        details: `${error}`
+      });
+    }
+    
     return results;
   }
 
