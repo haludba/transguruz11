@@ -61,7 +61,7 @@ export class DiagnosticsService {
     const results: DiagnosticResult[] = [];
     
     try {
-      // Проверяем наличие критических модулей
+      // Для API берём текущий вид карты (это ок), радиусы всё равно считаются отдельно от userLocation
       const criticalModules = [
         'react',
         'react-dom', 
